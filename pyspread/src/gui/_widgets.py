@@ -882,6 +882,77 @@ class EntryLine(wx.TextCtrl, EntryLineEventMixin, GridCellEventMixin,
 
         event.Skip()
 
+    def OnF4(self):
+        separators = [' ', '+', '-', '*', '/', '%', '<', '>', '&', '|', '^', '~', '=', '!', '(', ')', '[', ']', '{', '}', '@', ',', ':', '.', '`', ';']
+        posCursor = self.main_window.grid.actions.cursor
+        print self.Value
+        print self.InsertionPoint
+        text = self.Value
+        posS = -1
+        while text[posS+1:].find('S') >= 0:
+            valX, valY, valZ = -1, -1, -1
+            strXnew, strYnew, strZnew = '-', '-', '-'
+            posS = text.find('S')
+            if (posS == 0) or (text[posS-1] in separators):
+                if (text[:posS].count('"') % 2 == 1) or (text[:posS].count("'") % 2 == 1):
+                    # 'S' is part of a string
+                    pass
+                else:
+                    if text[posS + 1] in separators:
+                        # found a reference to another cell
+                        posX = posS + 1
+                        while (text[posX] in ' [') and (posX < len(text)):
+                            posX += 1
+                        strX = text[posX:text.find(',',posX)]
+                        try:
+                            valX = int(strX)
+                            diff = valX - posCursor[0]
+                            if diff > 0:
+                                strXnew = 'X + ' + str(diff)
+                            else:
+                                strXnew = 'X - ' + str(- diff)
+                        except:
+                            print 'strX', strX
+                            if strX.find('X') >= 0:
+                                try:
+                                    strXnew = strX + ' '
+                                    print strXnew
+                                    strXnew = strX[:strX.find('X')]
+                                    print strXnew
+                                    strXnew += '0'
+                                    print strXnew
+                                    strXnew += strX[strX.find('X') + 1:]
+                                    print strXnew
+                                    print "A"
+                                    valX = eval(strXnew)
+                                    print "B"
+                                    valX += posCursor[0]
+                                    print "C"
+                                    strXnew = str(valX)
+                                    print "D"
+                                except:
+                                    strXnew = strX
+                                    pass
+                        posY = text.find(',',posX) + 1
+                        strY = text[posY:text.find(',',posY)]
+                        try:
+                            valY = int(strY)
+                        except:
+                            pass
+                        posZ = text.find(',',posY) + 1
+                        strZ = text[posZ:text.find(']',posZ)]
+                        try:
+                            valZ = int(strZ)
+                        except:
+                            pass
+            print 'X:', strX, valX, strXnew, '  Y:', strY, valY, strYnew, '  Z:', strZ, valZ, strZnew
+
+
+
+
+
+
+
     def OnChar(self, event):
         """Key event method
 
@@ -988,6 +1059,8 @@ class EntryLine(wx.TextCtrl, EntryLineEventMixin, GridCellEventMixin,
 
                 # Do not process <Tab>
                 return
+            elif keycode == 343:
+                self.OnF4()
 
         event.Skip()
 
