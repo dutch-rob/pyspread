@@ -882,75 +882,156 @@ class EntryLine(wx.TextCtrl, EntryLineEventMixin, GridCellEventMixin,
 
         event.Skip()
 
+
+    def testXorYabsrel(self, xory, text):
+        absXY = '-'
+        try:
+            temp = int(text)
+            absXY = 'A'
+        except:
+            if text.find(xory) >= 0:
+                try:
+                    temp = text[:text.find(xory)]
+                    temp += '0'
+                    temp += text[text.find(xory) + 1:]
+                    # check if textnew is a value after replacing X or Y with 0, without using any variables -> use empty dictionary as globals in eval
+                    val = eval(temp, {})
+                    absXY = 'R'
+                except:
+                    absXY = 'C'
+        return absXY
+
+    def makeXorYrel(self, xory, text):
+        if xory == 'X':
+            posCursor = self.main_window.grid.actions.cursor[0]
+        else:
+            posCursor = self.main_window.grid.actions.cursor[1]
+        diff = int(text) - posCursor
+        if diff > 0:
+            text = xory + ' + ' + str(diff)
+        else:
+            text = xory + ' - ' + str(- diff)
+        return text
+
+    def makeXorYabs(self, xory, text):
+        if xory == 'X':
+            posCursor = self.main_window.grid.actions.cursor[0]
+        else:
+            posCursor = self.main_window.grid.actions.cursor[1]
+        temp = text[:text.find(xory)]
+        temp += '0'
+        temp += text[text.find(xory) + 1:]
+        val = eval(temp, {}) + posCursor
+        text = str(val)
+        return text
+
+    def findpos(self, text):
+        bracketlevel = 0
+        pos = 0
+        while pos < len(text):
+            if text[pos] == ',':
+                print 'found ","',text[:pos]
+                return text[:pos]
+            elif text[pos] in '([{':
+                bracketlevel += 1
+                while bracketlevel > 0 and pos < len(text):
+                    if text[pos] in '([{':
+                        bracketlevel += 1
+                    elif text[pos] in ')]}':
+                        bracketlevel -= 1
+                    pos += 1
+            pos += 1
+        return text
+
+
     def OnF4(self):
-        separators = [' ', '+', '-', '*', '/', '%', '<', '>', '&', '|', '^', '~', '=', '!', '(', ')', '[', ']', '{', '}', '@', ',', ':', '.', '`', ';']
+        separators = [' ', chr(9), '+', '-', '*', '/', '%', '<', '>', '&', '|', '^', '~', '=', '!',
+                      '(', ')', '[', ']', '{', '}', '@', ',', ':', '.', '`', ';']
         posCursor = self.main_window.grid.actions.cursor
-        print self.Value
-        print self.InsertionPoint
+        # print self.Value
+        posins = self.InsertionPoint
         text = self.Value
-        posS = -1
-        while text[posS+1:].find('S') >= 0:
-            valX, valY, valZ = -1, -1, -1
-            strXnew, strYnew, strZnew = '-', '-', '-'
-            posS = text.find('S')
-            if (posS == 0) or (text[posS-1] in separators):
-                if (text[:posS].count('"') % 2 == 1) or (text[:posS].count("'") % 2 == 1):
-                    # 'S' is part of a string
-                    pass
-                else:
-                    if text[posS + 1] in separators:
-                        # found a reference to another cell
-                        posX = posS + 1
-                        while (text[posX] in ' [') and (posX < len(text)):
-                            posX += 1
-                        strX = text[posX:text.find(',',posX)]
-                        try:
-                            valX = int(strX)
-                            diff = valX - posCursor[0]
-                            if diff > 0:
-                                strXnew = 'X + ' + str(diff)
-                            else:
-                                strXnew = 'X - ' + str(- diff)
-                        except:
-                            print 'strX', strX
-                            if strX.find('X') >= 0:
-                                try:
-                                    strXnew = strX + ' '
-                                    print strXnew
-                                    strXnew = strX[:strX.find('X')]
-                                    print strXnew
-                                    strXnew += '0'
-                                    print strXnew
-                                    strXnew += strX[strX.find('X') + 1:]
-                                    print strXnew
-                                    print "A"
-                                    valX = eval(strXnew)
-                                    print "B"
-                                    valX += posCursor[0]
-                                    print "C"
-                                    strXnew = str(valX)
-                                    print "D"
-                                except:
-                                    strXnew = strX
-                                    pass
-                        posY = text.find(',',posX) + 1
-                        strY = text[posY:text.find(',',posY)]
-                        try:
-                            valY = int(strY)
-                        except:
-                            pass
-                        posZ = text.find(',',posY) + 1
-                        strZ = text[posZ:text.find(']',posZ)]
-                        try:
-                            valZ = int(strZ)
-                        except:
-                            pass
-            print 'X:', strX, valX, strXnew, '  Y:', strY, valY, strYnew, '  Z:', strZ, valZ, strZnew
+        foundpos = False
 
+        # if cursor inside S[] then change abs/rel there only
+        if posins > 1 and posins < len(text):
+            print "A"
+            posX = posins
+            while posX > 1:
+                print "B"
+                posX -= 1
+                if text[posX] == '[':
+                    print "C"
+                    temp = posX
+                    posX = posX + 1
+                    while text[temp] in [' ',chr(9)] and temp > 0:
+                        print "D"
+                        temp -= 1
+                    if text[temp] == 'S' and (temp == 0 or text[temp-1] in separators):
+                        print "E"
+                        while text[posins] != ']' and posins < len(text):
+                            print "F"
+                            posins += 1
+                        if text[posins] == ']':
+                            print "G"
+                            strX = self.findpos(text[posX:posins])
+                            absX = self.testXorYabsrel('X', strX)
 
+                            posY = posX + len(strX) + 1
+                            strY = self.findpos(text[posY:posins])
+                            absY = self.testXorYabsrel('Y', strY)
 
+                            foundpos = True
+        # if cursor not inside S[] then change abs rel in outer S[]
+        if not(foundpos):
+            posS = -1
+            while text[posS+1:].find('S') >= 0:
+                valX, valY, valZ = -1, -1, -1
+                strXnew, strYnew, strZnew = '-', '-', '-'
+                posS = text.find('S')
+                if (posS == 0) or (text[posS-1] in separators):
+                    if (text[:posS].count('"') % 2 == 1) or (text[:posS].count("'") % 2 == 1):
+                        # 'S' is part of a string therefore no reference to cell found yet
+                        pass
+                    else:
+                        if text[posS + 1] in [' ', chr(9), '[']:
+                            # found a reference to another cell
+                            posX = posS + 1
+                            while (text[posX] in [' ', chr(9), '[']) and (posX < len(text)):
+                                posX += 1
+                            strX = self.findpos(text[posX:])
+                            absX = self.testXorYabsrel('X', strX)
 
+                            posY = posX + len(strX) + 1
+                            strY = self.findpos(text[posY:])
+                            absY = self.testXorYabsrel('Y', strY)
 
+                            foundpos = True
+                            break
+
+        if foundpos:
+            # cycle through abs and rel comparable to Excel
+            if absX == 'A' and absY == 'A':
+                text = text[:posX] + self.makeXorYrel('X',strX) + text[text.find(',',posX):posY] + \
+                                     self.makeXorYrel('Y',strY) + text[text.find(',',posY):]
+            elif absX == 'R' and absY == 'R':
+                text = text[:posY] + self.makeXorYabs('Y',strY) + text[text.find(',',posY):]
+            elif absX == 'R' and absY == 'A':
+                text = text[:posX] + self.makeXorYabs('X',strX) + text[text.find(',',posX):posY] + \
+                                     self.makeXorYrel('Y',strY) + text[text.find(',',posY):]
+            elif absX == 'A' and absY == 'R':
+                text = text[:posY] + self.makeXorYabs('Y',strY) + text[text.find(',',posY):]
+            # in case only one of X or Y could be resolved, change that one
+            elif absX == 'A':
+                text = text[:posX] + self.makeXorYrel('X',strX) + text[text.find(',',posX):]
+            elif absY == 'A':
+                text = text[:posY] + self.makeXorYrel('Y',strY) + text[text.find(',',posY):]
+            elif absX == 'R':
+                text = text[:posX] + self.makeXorYabs('X',strX) + text[text.find(',',posX):]
+            elif absY == 'R':
+                text = text[:posY] + self.makeXorYabs('Y',strY) + text[text.find(',',posY):]
+            print 'X:', strX, valX, strXnew, '  Y:', strY, valY, strYnew
+            self.Value = text
 
 
     def OnChar(self, event):
