@@ -957,14 +957,14 @@ class EntryLine(wx.TextCtrl, EntryLineEventMixin, GridCellEventMixin,
         if posins > 1 and posins < len(text):
             print "A"
             posX = posins
-            while posX > 1:
+            while posX > 1 and not(foundpos):
                 print "B"
                 posX -= 1
                 if text[posX] == '[':
                     print "C"
-                    temp = posX
+                    temp = posX - 1
                     posX = posX + 1
-                    while text[temp] in [' ',chr(9)] and temp > 0:
+                    while text[temp] in [' ', chr(9)] and temp > 0:
                         print "D"
                         temp -= 1
                     if text[temp] == 'S' and (temp == 0 or text[temp-1] in separators):
@@ -1011,6 +1011,7 @@ class EntryLine(wx.TextCtrl, EntryLineEventMixin, GridCellEventMixin,
 
         if foundpos:
             # cycle through abs and rel comparable to Excel
+            print "H", absX, absY, strX
             if absX == 'A' and absY == 'A':
                 text = text[:posX] + self.makeXorYrel('X',strX) + text[text.find(',',posX):posY] + \
                                      self.makeXorYrel('Y',strY) + text[text.find(',',posY):]
@@ -1030,7 +1031,7 @@ class EntryLine(wx.TextCtrl, EntryLineEventMixin, GridCellEventMixin,
                 text = text[:posX] + self.makeXorYabs('X',strX) + text[text.find(',',posX):]
             elif absY == 'R':
                 text = text[:posY] + self.makeXorYabs('Y',strY) + text[text.find(',',posY):]
-            print 'X:', strX, valX, strXnew, '  Y:', strY, valY, strYnew
+            # print 'X:', strX, valX, strXnew, '  Y:', strY, valY, strYnew
             self.Value = text
 
 
