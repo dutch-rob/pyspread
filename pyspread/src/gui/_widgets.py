@@ -902,6 +902,7 @@ class EntryLine(wx.TextCtrl, EntryLineEventMixin, GridCellEventMixin,
         return absXY
 
     def makeXorYrel(self, xory, text):
+        print 'makerel', xory, text
         if xory == 'X':
             posCursor = self.main_window.grid.actions.cursor[0]
         else:
@@ -914,6 +915,7 @@ class EntryLine(wx.TextCtrl, EntryLineEventMixin, GridCellEventMixin,
         return text
 
     def makeXorYabs(self, xory, text):
+        print 'makeabs', xory, text
         if xory == 'X':
             posCursor = self.main_window.grid.actions.cursor[0]
         else:
@@ -930,7 +932,6 @@ class EntryLine(wx.TextCtrl, EntryLineEventMixin, GridCellEventMixin,
         pos = 0
         while pos < len(text):
             if text[pos] == ',':
-                print 'found ","',text[:pos]
                 return text[:pos]
             elif text[pos] in '([{':
                 bracketlevel += 1
@@ -948,42 +949,34 @@ class EntryLine(wx.TextCtrl, EntryLineEventMixin, GridCellEventMixin,
         separators = [' ', chr(9), '+', '-', '*', '/', '%', '<', '>', '&', '|', '^', '~', '=', '!',
                       '(', ')', '[', ']', '{', '}', '@', ',', ':', '.', '`', ';']
         posCursor = self.main_window.grid.actions.cursor
-        # print self.Value
         posins = self.InsertionPoint
         text = self.Value
-        foundpos = False
+        foundposin, foundposout = False, False
 
         # if cursor inside S[] then change abs/rel there only
         if posins > 1 and posins < len(text):
-            print "A"
             posX = posins
-            while posX > 1 and not(foundpos):
-                print "B"
+            while posX > 1 and not(foundposin):
                 posX -= 1
                 if text[posX] == '[':
-                    print "C"
                     temp = posX - 1
                     posX = posX + 1
                     while text[temp] in [' ', chr(9)] and temp > 0:
-                        print "D"
                         temp -= 1
                     if text[temp] == 'S' and (temp == 0 or text[temp-1] in separators):
-                        print "E"
-                        while text[posins] != ']' and posins < len(text):
-                            print "F"
-                            posins += 1
-                        if text[posins] == ']':
-                            print "G"
-                            strX = self.findpos(text[posX:posins])
+                        temp = posins
+                        while text[temp] != ']' and temp < len(text):
+                            temp += 1
+                        if text[temp] == ']':
+                            strX = self.findpos(text[posX:temp])
                             absX = self.testXorYabsrel('X', strX)
 
                             posY = posX + len(strX) + 1
-                            strY = self.findpos(text[posY:posins])
+                            strY = self.findpos(text[posY:temp])
                             absY = self.testXorYabsrel('Y', strY)
-
-                            foundpos = True
+                            foundposin = True
         # if cursor not inside S[] then change abs rel in outer S[]
-        if not(foundpos):
+        if not(foundposin):
             posS = -1
             while text[posS+1:].find('S') >= 0:
                 valX, valY, valZ = -1, -1, -1
@@ -1006,12 +999,13 @@ class EntryLine(wx.TextCtrl, EntryLineEventMixin, GridCellEventMixin,
                             strY = self.findpos(text[posY:])
                             absY = self.testXorYabsrel('Y', strY)
 
-                            foundpos = True
+                            foundposout = True
                             break
 
-        if foundpos:
+        if foundposin or foundposout:
+            print absX, absY, strX, strY
+            oldlentext = len(text)
             # cycle through abs and rel comparable to Excel
-            print "H", absX, absY, strX
             if absX == 'A' and absY == 'A':
                 text = text[:posX] + self.makeXorYrel('X',strX) + text[text.find(',',posX):posY] + \
                                      self.makeXorYrel('Y',strY) + text[text.find(',',posY):]
@@ -1031,8 +1025,11 @@ class EntryLine(wx.TextCtrl, EntryLineEventMixin, GridCellEventMixin,
                 text = text[:posX] + self.makeXorYabs('X',strX) + text[text.find(',',posX):]
             elif absY == 'R':
                 text = text[:posY] + self.makeXorYabs('Y',strY) + text[text.find(',',posY):]
-            # print 'X:', strX, valX, strXnew, '  Y:', strY, valY, strYnew
             self.Value = text
+            if foundposin:
+                self.InsertionPoint = posX
+            else:
+                self.InsertionPoint = 0
 
 
     def OnChar(self, event):
