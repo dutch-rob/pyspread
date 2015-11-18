@@ -57,7 +57,7 @@ import wx.stc as stc
 from wx.lib.intctrl import IntCtrl, EVT_INT
 
 import src.lib.i18n as i18n
-from src.lib.parsers import common_start
+from src.lib.parsers import common_start, OnF4
 from src.lib._string_helpers import quote
 
 from src.config import config
@@ -883,209 +883,6 @@ class EntryLine(wx.TextCtrl, EntryLineEventMixin, GridCellEventMixin,
         event.Skip()
 
 
-    def testXorYabsrel(self, xory, text):
-        absXY = '-'
-        try:
-            temp = int(text)
-            absXY = 'A' + xory
-        except:
-            print 'test', text, xory
-            if text.find(xory) >= 0:
-                try:
-                    temp = text[:text.find(xory)]
-                    temp += '0'
-                    temp += text[text.find(xory) + 1:]
-                    # check if textnew is a value after replacing X or Y with 0, without using any variables -> use empty dictionary as globals in eval
-                    val = eval(temp, {})
-                    absXY = 'R' + xory
-                except:
-                    absXY = 'C' + xory
-        return absXY
-
-    def makeXorYrel(self, xory, text):
-        print 'makerel', xory, text
-        if xory == 'X':
-            posCursor = self.main_window.grid.actions.cursor[0]
-        else:
-            posCursor = self.main_window.grid.actions.cursor[1]
-        diff = int(text) - posCursor
-        if diff > 0:
-            text = xory + ' + ' + str(diff)
-        else:
-            text = xory + ' - ' + str(- diff)
-        return text
-
-    def makeXorYabs(self, xory, text):
-        print 'makeabs', xory, text
-        if xory == 'X':
-            posCursor = self.main_window.grid.actions.cursor[0]
-        else:
-            posCursor = self.main_window.grid.actions.cursor[1]
-        temp = text[:text.find(xory)]
-        temp += '0'
-        temp += text[text.find(xory) + 1:]
-        val = eval(temp, {}) + posCursor
-        text = str(val)
-        return text
-
-    def makeXorYrelorabs(self, xory, relorabs, text):
-        if relorabs == 'rel':
-            text = self.makeXorYrel(xory, text)
-        elif relorabs == 'abs':
-            text = self.makeXorYabs(xory, text)
-        return text
-
-    def findpos(self, text):
-        bracketlevel = 0
-        pos = 0
-        while pos < len(text):
-            if text[pos] == ',':
-                return text[:pos]
-            elif text[pos] in '([{':
-                bracketlevel += 1
-                while bracketlevel > 0 and pos < len(text):
-                    if text[pos] in '([{\'"':
-                        bracketlevel += 1
-                    elif text[pos] in ')]}\'"':
-                        bracketlevel -= 1
-                    pos += 1
-            pos += 1
-        return text
-
-    def findcolon(self, strXY):
-        bracketlevel = 0
-        colons = [-1,-1]
-        for i_xy in range(2):
-            text = strXY[i_xy]
-            pos = 0
-            while pos < len(text):
-                if text[pos] == ':':
-                    colons[i_xy] = pos
-                    break
-                elif text[pos] in '([{':
-                    bracketlevel += 1
-                    while bracketlevel > 0 and pos < len(text):
-                        if text[pos] in '([{\'"':
-                            bracketlevel += 1
-                        elif text[pos] in ')]}\'"':
-                            bracketlevel -= 1
-                        pos += 1
-                pos += 1
-        return(colons)
-
-
-
-    def OnF4(self):
-        separators = [' ', chr(9), '+', '-', '*', '/', '%', '<', '>', '&', '|', '^', '~', '=', '!',
-                      '(', ')', '[', ']', '{', '}', '@', ',', ':', '.', '`', ';']
-        posCursor = self.main_window.grid.actions.cursor
-        posins = self.InsertionPoint
-        text = self.Value
-        foundposin, foundposout = False, False
-
-        # if cursor inside S[] then change abs/rel there only
-        if posins > 1 and posins < len(text):
-            posX = posins
-            while posX > 1 and not(foundposin):
-                posX -= 1
-                if text[posX] == '[':
-                    temp = posX - 1
-                    posX = posX + 1
-                    while text[temp] in [' ', chr(9)] and temp > 0:
-                        temp -= 1
-                    if text[temp] == 'S' and (temp == 0 or text[temp-1] in separators):
-                        temp = posins
-                        while text[temp] != ']' and temp < len(text):
-                            temp += 1
-                        if text[temp] == ']':
-                            str1 = self.findpos(text[posX:temp])
-                            posY = posX + len(str1) + 1
-                            str2 = self.findpos(text[posY:temp])
-                            foundposin = True
-                            colons = self.findcolon([str1, str2])
-                            if colons == [-1,-1]:
-                                abs1 = self.testXorYabsrel('X', str1)
-                                abs2 = self.testXorYabsrel('Y', str2)
-                            elif posins <= posX + len(str1):
-                                if colons[0] == -1:
-                                    abs1 = self.testXorYabsrel('X', str1)
-                                    abs2 = '-'
-                                else:
-                                    posY = posX + colons[0] + 1
-                                    str2 = str1[colons[0] + 1:]
-                                    str1 = str1[:colons[0]]
-                                    abs1 = self.testXorYabsrel('X', str1)
-                                    abs2 = self.testXorYabsrel('X', str2)
-                            else:
-                                if colons[1] == -1:
-                                    abs2 = self.testXorYabsrel('Y', str2)
-                                    abs1 = '-'
-                                else:
-                                    posX = posY
-                                    str1 = str2[:colons[1]]
-                                    posY = posY + colons[1] + 1
-                                    str2 = str2[colons[1] + 1:]
-                                    abs1 = self.testXorYabsrel('Y', str1)
-                                    abs2 = self.testXorYabsrel('Y', str2)
-
-        # if cursor not inside S[] then change abs rel in outer S[]
-        if not(foundposin):
-            posS = -1
-            while text[posS+1:].find('S') >= 0:
-                valX, valY, valZ = -1, -1, -1
-                str1new, str2new, strZnew = '-', '-', '-'
-                posS = text.find('S')
-                if (posS == 0) or (text[posS-1] in separators):
-                    if (text[:posS].count('"') % 2 == 1) or (text[:posS].count("'") % 2 == 1):
-                        # 'S' is part of a string therefore no reference to cell found yet
-                        pass
-                    else:
-                        if text[posS + 1] in [' ', chr(9), '[']:
-                            # found a reference to another cell
-                            posX = posS + 1
-                            while (text[posX] in [' ', chr(9), '[']) and (posX < len(text)):
-                                posX += 1
-
-                            str1 = self.findpos(text[posX:])
-
-                            posY = posX + len(str1) + 1
-                            str2 = self.findpos(text[posY:])
-
-                            abs1 = self.testXorYabsrel('X', str1)
-                            abs2 = self.testXorYabsrel('Y', str2)
-
-                            foundposout = True
-                            break
-
-        if foundposin or foundposout:
-            print abs1, abs2, str1, str2, posX, posY
-
-            oldlentext = len(text)
-            # cycle through abs and rel comparable to Excel
-            if abs1[0] == 'A' and abs2[0] == 'A':
-                text = text[:posX] + self.makeXorYrelorabs(abs1[1], 'rel', str1) + text[posX + len(str1)] + \
-                                     self.makeXorYrelorabs(abs2[1], 'rel', str2) + text[posY + len(str2):]
-            elif abs1[0] == 'R' and abs2[0] == 'R':
-                text = text[:posY] + self.makeXorYrelorabs(abs2[1], 'abs', str2) + text[posY + len(str2):]
-            elif abs1[0] == 'R' and abs2[0] == 'A':
-                text = text[:posX] + self.makeXorYrelorabs(abs1[1], 'abs', str1) + text[posX + len(str1)] + \
-                                     self.makeXorYrelorabs(abs2[1], 'rel', str2) + text[posY + len(str2):]
-            elif abs1[0] == 'A' and abs2[0] == 'R':
-                text = text[:posY] + self.makeXorYrelorabs(abs2[1], 'abs', str2) + text[posY + len(str2):]
-            # in case only one of X or Y could be resolved, change that one
-            elif abs1[0] == 'A':
-                text = text[:posX] + self.makeXorYrelorabs(abs1[1], 'rel', str1) + text[posX + len(str1):]
-            elif abs2[0] == 'A':
-                text = text[:posY] + self.makeXorYrelorabs(abs2[1], 'rel', str2) + text[posY + len(str2):]
-            elif abs1[0] == 'R':
-                text = text[:posX] + self.makeXorYrelorabs(abs1[1], 'abs', str1) + text[posX + len(str1):]
-            elif abs2[0] == 'R':
-                text = text[:posY] + self.makeXorYrelorabs(abs2[1], 'abs', str2) + text[posY + len(str2):]
-            self.Value = text
-            if foundposin:
-                self.InsertionPoint = posX
-            else:
-                self.InsertionPoint = 0
 
 
     def OnChar(self, event):
@@ -1195,7 +992,9 @@ class EntryLine(wx.TextCtrl, EntryLineEventMixin, GridCellEventMixin,
                 # Do not process <Tab>
                 return
             elif keycode == 343: # F4: change among absolute and relative references  - does F4 have keycode 343 everywhere?
-                self.OnF4()
+                self.Value, self.InsertionPoint = OnF4(self.Value, self.InsertionPoint, self.main_window.grid.actions.cursor)
+
+
 
         event.Skip()
 
