@@ -889,10 +889,11 @@ class EntryLine(wx.TextCtrl, EntryLineEventMixin, GridCellEventMixin,
             temp = int(text)
             absXY = 'A' + xory
         except:
+            print 'test', text, xory
             if text.find(xory) >= 0:
                 try:
                     temp = text[:text.find(xory)]
-                    temp += '0' + xory
+                    temp += '0'
                     temp += text[text.find(xory) + 1:]
                     # check if textnew is a value after replacing X or Y with 0, without using any variables -> use empty dictionary as globals in eval
                     val = eval(temp, {})
@@ -1005,7 +1006,7 @@ class EntryLine(wx.TextCtrl, EntryLineEventMixin, GridCellEventMixin,
                             if colons == [-1,-1]:
                                 abs1 = self.testXorYabsrel('X', str1)
                                 abs2 = self.testXorYabsrel('Y', str2)
-                            elif posins < posX + len(str1):
+                            elif posins <= posX + len(str1):
                                 if colons[0] == -1:
                                     abs1 = self.testXorYabsrel('X', str1)
                                     abs2 = '-'
@@ -1021,9 +1022,9 @@ class EntryLine(wx.TextCtrl, EntryLineEventMixin, GridCellEventMixin,
                                     abs1 = '-'
                                 else:
                                     posX = posY
-                                    str1 = str2[:colons[0]]
-                                    posY = posY + colons[0] + 1
-                                    str2 = str2[colons[0] + 1:]
+                                    str1 = str2[:colons[1]]
+                                    posY = posY + colons[1] + 1
+                                    str2 = str2[colons[1] + 1:]
                                     abs1 = self.testXorYabsrel('Y', str1)
                                     abs2 = self.testXorYabsrel('Y', str2)
 
@@ -1193,7 +1194,7 @@ class EntryLine(wx.TextCtrl, EntryLineEventMixin, GridCellEventMixin,
 
                 # Do not process <Tab>
                 return
-            elif keycode == 343:
+            elif keycode == 343: # F4: change among absolute and relative references  - does F4 have keycode 343 everywhere?
                 self.OnF4()
 
         event.Skip()

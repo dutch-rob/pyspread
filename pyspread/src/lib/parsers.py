@@ -214,3 +214,4 @@ def is_svg(code):
         return True
 
     return False
+
